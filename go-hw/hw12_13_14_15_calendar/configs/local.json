@@ -1,0 +1,27 @@
+{
+  "logger": {
+    "level": "info",
+    "file": "out.log"
+  },
+  "http": {
+    "host": "0.0.0.0",
+    "port": "8889"
+  },
+  "grpc": {
+    "host": "0.0.0.0",
+    "port": "50052"
+  },
+  "sql": true,
+  "db": {
+    "host": "0.0.0.0",
+    "port": "6000",
+    "user": "go_user",
+    "password": "go_password",
+    "database": "events_db",
+    "sslMode": "disable"
+  },
+  "amqp": {
+    "uri": "amqp://guest:guest@localhost:5672/",
+    "queue": "calendar"
+  }
+}

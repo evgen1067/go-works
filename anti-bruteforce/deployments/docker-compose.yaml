@@ -1,0 +1,62 @@
+version: '3.8'
+
+volumes:
+  postgres: ~
+
+networks:
+  new:
+
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: ${APP_NAME}_postgres
+    networks:
+      new:
+        aliases:
+          - repository
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    ports:
+      - "${PG_PORT}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${PG_DB}", "-U", "${PG_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    container_name: ${APP_NAME}_migrate
+    restart: on-failure
+    networks:
+      - new
+    volumes:
+      - "../migrations:/migrations"
+    command: [ "-path", "/migrations", "-database",  "postgres://${PG_USER}:${PG_PASSWORD}@repository:5432/${PG_DB}?sslmode=${PG_SSL}", "up" ]
+    links:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bruteforce:
+    container_name: ${APP_NAME}_app
+    build:
+      context: ..
+      dockerfile: ./build/bruteforce/Dockerfile
+    restart: on-failure
+    ports:
+      - "8888:8888"
+    command: --config /configs/config.json
+    volumes:
+      - "../configs:/configs"
+    networks:
+      - new
+    depends_on:
+      postgres:
+        condition: service_healthy

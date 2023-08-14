@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+option go_package = "github.com/evgen1067/hw12_13_14_15_calendar/api";
+
+import "google/protobuf/timestamp.proto";
+
+package event;
+
+message Event {
+  uint64 id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp date_start = 4;
+  google.protobuf.Timestamp date_end = 5;
+  uint64 notify_in = 6;
+  uint64 owner_id = 7;
+}
+
+service EventService {
+  rpc Create(CreateRequest) returns (CreateResponse) {}
+  rpc Update(UpdateRequest) returns (UpdateResponse) {}
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+  rpc DayList(ListRequest) returns (ListResponse) {}
+  rpc WeekList(ListRequest) returns (ListResponse) {}
+  rpc MonthList(ListRequest) returns (ListResponse) {}
+}
+
+message CreateRequest {
+  Event event = 1;
+}
+message CreateResponse {
+  uint64 id = 1;
+}
+
+message UpdateRequest {
+  uint64 id = 1;
+  Event event = 2;
+}
+message UpdateResponse {
+  uint64 id = 1;
+}
+
+message DeleteRequest {
+  uint64 id = 1;
+}
+message DeleteResponse {
+  uint64 id = 1;
+}
+
+message ListRequest {
+  google.protobuf.Timestamp date = 1;
+}
+message ListResponse {
+  repeated Event event = 1;
+}

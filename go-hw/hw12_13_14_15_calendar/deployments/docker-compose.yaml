@@ -1,0 +1,109 @@
+version: '3.8'
+
+volumes:
+  postgres: ~
+
+networks:
+  new:
+
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: ${APP_NAME}_postgres
+    networks:
+      new:
+        aliases:
+          - database
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    ports:
+      - "${PG_PORT}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${PG_DB}", "-U", "${PG_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    container_name: ${APP_NAME}_migrate
+    restart: on-failure
+    networks:
+      - new
+    volumes:
+      - "../migrations:/migrations"
+    command: [ "-path", "/migrations", "-database",  "postgres://go_user:go_password@database:5432/${PG_DB}?sslmode=disable", "up" ]
+    links:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  calendar:
+    container_name: ${APP_NAME}_calendar
+    build:
+      context: ..
+      dockerfile: ./build/calendar/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+      - "50051:50051"
+    command: --config /configs/config.json
+    volumes:
+      - "../configs:/configs"
+    networks:
+      - new
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  rabbit:
+    container_name: ${APP_NAME}_rabbit
+    image: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+    networks:
+      - new
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  scheduler:
+    container_name: ${APP_NAME}_scheduler
+    build:
+      context: ..
+      dockerfile: ./build/scheduler/Dockerfile
+    restart: unless-stopped
+    command: --config /configs/config.json
+    volumes:
+      - "../configs:/configs"
+    networks:
+      - new
+    depends_on:
+      rabbit:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  sender:
+    container_name: ${APP_NAME}_sender
+    build:
+      context: ..
+      dockerfile: ./build/sender/Dockerfile
+    restart: unless-stopped
+    command: --config /configs/config.json
+    volumes:
+      - "../configs:/configs"
+    networks:
+      - new
+    depends_on:
+      rabbit:
+        condition: service_healthy
